@@ -26,7 +26,7 @@ public:
   // Publishers
   void publish_merged(ros::Publisher *merged_map);
   // Public Methods
-  void merge();
+  int merge();
   // Variables
   octomap_msgs::Octomap myMap;
   octomap_msgs::Octomap otherMap;

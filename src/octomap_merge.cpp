@@ -34,7 +34,10 @@ class OctomapMerge
 	void OctomapMerge::publishMerged(ros::Publisher *merged_map)
   {
   }
-  
+ 
+  int merge()
+  {
+  } 
 
 }
 
