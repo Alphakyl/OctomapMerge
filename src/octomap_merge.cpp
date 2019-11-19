@@ -2,8 +2,12 @@
 #include <nav_msgs/Odometry.h>
 #include <octomap_msgs/Octomap.h>
 #include <cstdlib>
-#include "octomap_merge/OctomapAndPoseDiffOdom.h"
+#include "octomap_merge/OctomapArray.h"
 #include "octomap_merge.h"
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 class OctomapMerge
 {
@@ -25,18 +29,20 @@ class OctomapMerge
     myMapNew = true;
   }
 
-  void callback_otherMapAndTF(const octomap_merge::OctomapAndPoseDiffOdom::ConstPtr& msg){
-    otherMap = msg.map;
-    transform = msg.pose_diff;
-    otherMapNew = true;
-  }
-  
-	void OctomapMerge::publishMerged(ros::Publisher *merged_map)
-  {
+  void callback_neighborMaps(const octomap_merge::OctomapArray::ConstPtr& msg){
+    neighbors = msg;
+    otherMapsNew = true;
   }
  
   int merge()
   {
+    // Convert my map to PCL
+    // For each map in table
+    for(uint8 i = 0, i++, i<neighbors.num_neighbors)
+    {
+       // Convert this map to PCL
+       // pcl_merge
+    } 
   } 
 
 }
@@ -51,19 +57,17 @@ int main(int argc, char **argv)
   private_node_handle.param("rate", rate, int(1));
   OctomapMerge *octomap_merger = new OctomapMerge();
 
-	//ros::Publisher pub = nh.advertise<octomap_msgs::Octomap>("merged_map", 5);
-
   ros::Subscriber sub_mymap = nh.subscribe(octomap_msgs::Octomap, 100, &OctomapMerger::callback_myMap, octomap_merger);
-  ros::Subscriber sub_othermap = nh.subscribe();
+  ros::Subscriber sub_neighbors = nh.subscribe(octomap_merge::OctomapArray, 100, &OctomapMerger::callback_neighborMaps, octomap_merger);
 
   ros::Rate r(rate);
   while(nh.ok())
   {
     ros::SpinOnce();
-    if(octomap_merger::myMapNew && octomap_merger::otherMapNew)
+    if(octomap_merger::myMapNew && octomap_merger::otherMapsNew)
     {
 			octomap_merger::myMapNew = false;
-      octomap_merger::otherMapNew = false;
+      octomap_merger::otherMapsNew = false;
       octomap_merger::merge();
     }  
     r.sleep();
