@@ -25,8 +25,8 @@ public:
   // Destructor
   ~OctomapMerge();
   // Callbacks
-	void callback_myMap(const octomap_msgs::Octomap::ConstPtr& msg);
-  void callback_neighborMaps(const octomap_merge::OctomapMerge::ConstPtr& msg);
+  void callback_myMap(const octomap_msgs::Octomap::ConstPtr& msg);
+  void callback_neighborMaps(const octomap_merge::OctomapArrayConstPtr &msg);
   // Publishers
   void publish_merged(ros::Publisher *merged_map);
   // Public Methods
@@ -34,16 +34,17 @@ public:
   // Variables
   octomap_msgs::Octomap myMap;
   octomap_merge::OctomapArray neighbors;
-
+  sensor_msgs::PointCloud2 freeCellsMsg;
+	
   //Refresh Vars
-	bool myMapNew;
+  bool myMapNew;
   bool otherMapsNew;  
 /*******************************************************************/
 /* Private Variables and Methods */
 /*******************************************************************/
 private:
-
-	void octomap_to_pcl(const octomap_msgs::Octomap::ConstPtr& map);
+  octomap_msgs::Octomap * maptoconvert;
+  void octomap_to_pcl(octomap_msgs::Octomap& map);
   void pcl_merge(); //(pcl_pointer? map1, pcl_pointer? map2)
 
 }; //end class OctomapMerge

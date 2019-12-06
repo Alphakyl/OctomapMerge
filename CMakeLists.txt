@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
 	sensor_msgs
 	nav_msgs
   message_generation
+	pcl_conversions
+	pcl_ros
 )
 
 ################################################
@@ -45,7 +47,7 @@ find_package(catkin REQUIRED COMPONENTS
 # Generate messages in the 'msg' folder
 add_message_files(
   FILES
-	OctomapAndPoseDiffOdom.msg
+	OctomapArray.msg
 )
 
 ## Generate services in the 'srv' folder
