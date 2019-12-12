@@ -13,39 +13,43 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+typedef pcl::PointXYZ PointT;
+typedef pcl::PointCloud<PointT> PointCloud_xyz;
+typedef pcl::PCLPointCloud2 PointCloud;
+
 class OctomapMerge
 {
-/********************************************************************/
 /* Public Variables and Methods */
-/********************************************************************/
 public:
-
   // Constructor
-  OctomapMerge();
+  OctomapMerge(ros::NodeHandle* nodehandle);
   // Destructor
   ~OctomapMerge();
   // Callbacks
   void callback_myMap(const octomap_msgs::Octomap::ConstPtr& msg);
   void callback_neighborMaps(const octomap_merge::OctomapArrayConstPtr &msg);
-  // Publishers
-  void publish_merged(ros::Publisher *merged_map);
   // Public Methods
-  int merge();
+  void merge();
   // Variables
-  octomap_msgs::Octomap myMap;
-  octomap_merge::OctomapArray neighbors;
-  sensor_msgs::PointCloud2 freeCellsMsg;
-	
-  //Refresh Vars
   bool myMapNew;
   bool otherMapsNew;  
-/*******************************************************************/
+
 /* Private Variables and Methods */
-/*******************************************************************/
 private:
+  ros::NodeHandle nh_;
+
+  octomap_msgs::Octomap myMap;
+  octomap_merge::OctomapArray neighbors;
   octomap_msgs::Octomap * maptoconvert;
-  void octomap_to_pcl(octomap_msgs::Octomap& map);
-  void pcl_merge(); //(pcl_pointer? map1, pcl_pointer? map2)
+
+  ros::Subscriber sub_mymap;
+  ros::Subscriber sub_neighbors;
+
+  ros::Publisher pub_merged;
+
+  void octomap_to_pcl(octomap_msgs::Octomap * map, sensor_msgs::PointCloud2Ptr occupiedCellsMsg);
+  void initializeSubscribers();
+  void initializePublishers();
 
 }; //end class OctomapMerge
 

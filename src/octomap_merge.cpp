@@ -11,21 +11,35 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-
-typedef pcl::PointXYZ PointT;
-typedef pcl::PointCloud<PointT> PointCloud_xyz;
-typedef pcl::PCLPointCloud2 PointCloud;
-
 	
 // Constructor
-OctomapMerge::OctomapMerge()
+OctomapMerge::OctomapMerge(ros::NodeHandle* nodehandle):nh_(*nodehandle)
 {
+    ROS_INFO("Constructing OctomapMerge Class");
+    initializeSubscribers();
+    initializePublishers();
+    myMapNew = false;
+    otherMapsNew = false;
 }// end Constructor
  
 // Destructor
 OctomapMerge::~OctomapMerge()
 {
 }// end Destructor
+
+void OctomapMerge::initializeSubscribers()
+{
+    ROS_INFO("Initializing Subscribers");
+    sub_mymap = nh_.subscribe("octomap_binary", 100, &OctomapMerge::callback_myMap, this);
+    sub_neighbors = nh_.subscribe("neighbors", 100, &OctomapMerge::callback_neighborMaps, this);
+}
+
+void OctomapMerge::initializePublishers()
+{
+    ROS_INFO("Initializing Publishers");
+    pub_merged = nh_.advertise<sensor_msgs::PointCloud2>("merged_pc", 10, true);
+}
+
 
 //Callbacks
 void OctomapMerge::callback_myMap(const octomap_msgs::OctomapConstPtr& msg)
@@ -39,98 +53,116 @@ void OctomapMerge::callback_neighborMaps(const octomap_merge::OctomapArrayConstP
 	otherMapsNew = true;
 } // end callback_neighborMaps();
  
-int OctomapMerge::merge()
+void OctomapMerge::octomap_to_pcl(octomap_msgs::Octomap * map, sensor_msgs::PointCloud2Ptr occupiedCellsMsg)
 {
+    octomap::OcTree* myTree = new octomap::OcTree(map->resolution);
+    myTree = (octomap::OcTree*)octomap_msgs::binaryMsgToMap(*map);
+    double size, value;
+    float lower_corner[3];
+    int idk, depth, width;
+    int lowest_depth = (int)myTree->getTreeDepth();
+    int count = 0;
+    int freeCount = 0;
+    int occCount = 0;
+    float voxel_size = (float)myTree->getResolution();
+
+    PointT point;
+    PointCloud_xyz::Ptr occupiedCells(new PointCloud_xyz);
+
+    for(octomap::OcTree::leaf_iterator it = myTree->begin_leafs(), end=myTree->end_leafs(); it!=end; ++it)
+    {
+        depth = (int)it.getDepth();
+        point.x = (float)it.getX();
+        point.y = (float)it.getY();
+        point.z = (float)it.getZ();
+        size = it.getSize();
+
+        if (myTree->isNodeOccupied(*it))
+        {
+            if(depth==lowest_depth)
+            {
+                occupiedCells->points.push_back(point);
+            } else {
+                width = (int)std::pow(2.0, (double)(lowest_depth-depth));
+                lower_corner[0] = point.x - size/2.0 + voxel_size/2.0;
+                lower_corner[1] = point.y - size/2.0 + voxel_size/2.0;
+                lower_corner[2] = point.z - size/2.0 + voxel_size/2.0;
+                for (int i = 0; i < width; i++)
+                {
+                    point.x = lower_corner[0] + i*voxel_size;
+                    for (int j = 0; j < width; j++)
+                    {
+                        point.y = lower_corner[1] + j*voxel_size;
+                        for (int k = 0; k < width; k++)
+                        {
+                            point.z = lower_corner[2] + k*voxel_size;
+                            if (value)
+                            {
+                                occupiedCells->points.push_back(point);
+                            } // endif
+                        } // endfor
+                    } // endfor
+                } // endfor
+            }  // endelseif
+        } // endif
+    } // endfor
+    delete myTree;
+    pcl::toROSMsg(*occupiedCells,*occupiedCellsMsg);
+} // endoctomap_to_pcl();
+
+void OctomapMerge::merge()
+{
+    sensor_msgs::PointCloud2Ptr myMapMsg(new sensor_msgs::PointCloud2);
+    sensor_msgs::PointCloud2Ptr mergedMapMsg(new sensor_msgs::PointCloud2);
+    sensor_msgs::PointCloud2Ptr neighborMapMsg(new sensor_msgs::PointCloud2);
+
+
 	// Convert my map to PCL
-	// For each map in table
+    *maptoconvert = myMap;
+    octomap_to_pcl(maptoconvert, myMapMsg);
+    // Add map to merge
+    pcl::concatenatePointCloud(*mergedMapMsg, *myMapMsg, *mergedMapMsg);
+    // For each map in the neighbor set
     for(int i = 0; i++; i<neighbors.num_octomaps)
 	{
 		// Convert this map to PCL
-		// pcl_merge
+        *maptoconvert = neighbors.octomaps[i];
+        octomap_to_pcl(maptoconvert,neighborMapMsg);
+        // Add map to merge
+        pcl::concatenatePointCloud(*mergedMapMsg, *neighborMapMsg, *mergedMapMsg);
 	} // endfor
+    /* Filter merge cloud to avoid over publishing points */
+    // pcl_conversions::toPCL(merged_out, *merged_cloud);
+    // sor.setInputCloud(merged_cloud);
+    // sor.setLeafSize(0.1f, 0.1f, 0.1f);
+    // sor.filter(*filtered_merged_cloud);
+    // pcl_conversions::fromPCL(*filtered_merged_cloud, merged_pub);
+    // merged_pub = merged_out;
+    pub_merged.publish(*mergedMapMsg);
 } // end merge();
-	
-void OctomapMerge::octomap_to_pcl(octomap_msgs::Octomap& map)
-{
-    octomap::OcTree* myTree = new octomap::OcTree(map.resolution);
-    myTree = (octomap::OcTree*)octomap_msgs::binaryMsgToMap(map);
-	double size, value;
-	float lower_corner[3];
-	int idk, depth, width;
-    int lowest_depth = (int)myTree->getTreeDepth();
-	int count = 0;
-	int freeCount = 0;
-	int occCount = 0;
-    float voxel_size = (float)myTree->getResolution();
-
-	PointT point;
-	PointCloud_xyz::Ptr freeCells(new PointCloud_xyz);
-
-    for(octomap::OcTree::leaf_iterator it = myTree->begin_leafs(), end=myTree->end_leafs(); it!=end; ++it)
-	{
-		depth = (int)it.getDepth();
-		point.x = (float)it.getX();
-		point.y = (float)it.getY();
-		point.z = (float)it.getZ();
-		size = it.getSize();
-
-		if (depth == lowest_depth)
-		{
-			if (value)
- 			{
-				freeCells->points.push_back(point);
-			} else {
-				width = (int)std::pow(2.0, (double)(lowest_depth-depth));
-				lower_corner[0] = point.x - size/2.0 + voxel_size/2.0;
-				lower_corner[1] = point.y - size/2.0 + voxel_size/2.0;
-				lower_corner[2] = point.z - size/2.0 + voxel_size/2.0;
-				for (int i = 0; i < width; i++)
-				{
-					point.x = lower_corner[0] + i*voxel_size;
-					for (int j = 0; j < width; j++)
-					{
-						point.y = lower_corner[1] + j*voxel_size;
-						for (int k = 0; k < width; k++)
-						{
-							point.z = lower_corner[2] + k*voxel_size;
-							if (value)
-							{
-								freeCells->points.push_back(point);
-							} // endif
-						} // endfor
-					} // endfor
-				} // endfor
-			}  // endelseif
-		} // endif
-	} // endfor
-	pcl::toROSMsg(*freeCells, freeCellsMsg);
-    delete myTree;
-} // endoctomap_to_pcl();
-
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv ,"octomap_merge");
-  ros::NodeHandle nh;
-  int rate;
-  ros::NodeHandle private_node_handle("~");
-  private_node_handle.param("rate", rate, int(1));
-  OctomapMerge *octomap_merger = new OctomapMerge();
+    ros::init(argc, argv ,"octomap_merge");
+    ros::NodeHandle nh;
 
-  ros::Subscriber sub_mymap = nh.subscribe("octomap_binary", 100, &OctomapMerge::callback_myMap, octomap_merger);
-  ros::Subscriber sub_neighbors = nh.subscribe("neighbors", 100, &OctomapMerge::callback_neighborMaps, octomap_merger);
+    int rate;
+    ros::NodeHandle private_node_handle("~");
+    private_node_handle.param("rate", rate, int(1));
 
-  ros::Rate r(rate);
-  while(nh.ok())
-  {
-    ros::spinOnce();
-    if(octomap_merger->myMapNew && octomap_merger->otherMapsNew)
+    OctomapMerge *octomap_merger = new OctomapMerge(&nh);
+
+    ros::Rate r(rate);
+    while(nh.ok())
     {
+        ros::spinOnce();
+        if(octomap_merger->myMapNew && octomap_merger->otherMapsNew)
+        {
 			octomap_merger->myMapNew = false;
-      octomap_merger->otherMapsNew = false;
-      octomap_merger->merge();
-    }  
-    r.sleep();
-  }
-  return 0;
+            octomap_merger->otherMapsNew = false;
+            octomap_merger->merge();
+        }
+        r.sleep();
+    }
+    return 0;
 }
