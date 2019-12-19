@@ -152,6 +152,8 @@ void OctomapMerge::merge()
     // pcl_conversions::fromPCL(*filtered_merged_cloud, merged_pub);
     // merged_pub = merged_out;
   for(int i = 0; i<pub_times; i++){
+    *mergedMapMsg.header.stamp = ros::Time::now();
+    *mergedMapMsg.header.frame_id = "world";
 		pub_merged.publish(*mergedMapMsg);
   }
 } // end merge();
