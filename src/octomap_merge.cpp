@@ -173,9 +173,9 @@ int main(int argc, char **argv)
     while(nh.ok())
     {
         ros::spinOnce();
-        if(octomap_merger->myMapNew && octomap_merger->otherMapsNew)
+        if(octomap_merger->otherMapsNew)
         {
-			octomap_merger->myMapNew = false;
+						octomap_merger->myMapNew = false;
             octomap_merger->otherMapsNew = false;
             octomap_merger->merge();
         }
