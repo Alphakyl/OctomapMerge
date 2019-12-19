@@ -33,7 +33,7 @@ void OctomapMerge::initializeSubscribers()
 {
     ROS_INFO("Initializing Subscribers");
     sub_mymap = nh_.subscribe("octomap_binary", 100, &OctomapMerge::callback_myMap, this);
-    sub_neighbors = nh_.subscribe("neighbors", 100, &OctomapMerge::callback_neighborMaps, this);
+    sub_neighbors = nh_.subscribe("neighbor_maps", 100, &OctomapMerge::callback_neighborMaps, this);
 }
 
 void OctomapMerge::initializePublishers()

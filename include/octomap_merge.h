@@ -7,7 +7,6 @@
 #include <octomap_msgs/Octomap.h>
 #include <cstdlib>
 #include "octomap_merge/OctomapArray.h"
-#include "octomap_merge/OctomapMerge.h"
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
