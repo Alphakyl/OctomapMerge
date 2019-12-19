@@ -40,7 +40,8 @@ private:
 
   octomap_msgs::Octomap myMap;
   octomap_merge::OctomapArray neighbors;
-  octomap_msgs::Octomap * maptoconvert;
+  octomap_msgs::Octomap * maptoconvertptr;
+  octomap_msgs::Octomap maptoconvert;
 
   ros::Subscriber sub_mymap;
   ros::Subscriber sub_neighbors;
@@ -50,6 +51,7 @@ private:
   void octomap_to_pcl(octomap_msgs::Octomap * map, sensor_msgs::PointCloud2Ptr occupiedCellsMsg);
   void initializeSubscribers();
   void initializePublishers();
+  int pub_times;
 
 }; //end class OctomapMerge
 

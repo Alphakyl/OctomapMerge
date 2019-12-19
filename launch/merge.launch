@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<launch>
+	<node name="octomap_test" pkg="octomap_merge" type="octomap_test">
+		<remap from="octomap_binary" to="/H03/octomap_binary"/>
+  </node>
+
+  <node name="octomap_merge" pkg="octomap_merge" type="octomap_merge" output="screen">
+		<remap from="octomap_binary" to="/H02/octomap_binary"/>
+  </node>
+
+
+	<arg name="path1" default="/media/kyle/45bfdd4b-6c7c-4d6a-a09d-21fbe576aa92/niosh/TUNNEL_DEPLOYMENT_3/H02/"/> 
+	<arg name="path2" default="/media/kyle/45bfdd4b-6c7c-4d6a-a09d-21fbe576aa92/niosh/TUNNEL_DEPLOYMENT_3/H03/"/>
+	<arg name="H02_1" default="outputs_2019-08-20-14-02-24_0"/>
+  <arg name="H02_2" default="outputs_2019-08-20-14-22-24_1"/>
+  <arg name="H03_1" default="outputs_2019-08-20-14-09-15_0"/>
+  <arg name="H03_2" default="outputs_2019-08-20-14-29-15_1"/>
+  <node pkg="rosbag" type="play" name="player2" args="--clock $(arg path2)$(arg H03_1).bag $(arg path2)$(arg H03_2).bag"/>
+  
+  <node pkg="rosbag" type="play" name="player1" args="--clock $(arg path1)$(arg H02_1).bag $(arg path1)$(arg H02_2).bag"/>
+	<node type="rviz" name="rviz" pkg="rviz" args="-d $(find octomap_merge)/rviz/kyle.rviz"/>
+</launch>

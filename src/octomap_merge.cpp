@@ -18,6 +18,8 @@ OctomapMerge::OctomapMerge(ros::NodeHandle* nodehandle):nh_(*nodehandle)
     ROS_INFO("Constructing OctomapMerge Class");
     initializeSubscribers();
     initializePublishers();
+    maptoconvertptr = &maptoconvert;
+    pub_times = 5;
     myMapNew = false;
     otherMapsNew = false;
 }// end Constructor
@@ -37,24 +39,28 @@ void OctomapMerge::initializeSubscribers()
 void OctomapMerge::initializePublishers()
 {
     ROS_INFO("Initializing Publishers");
-    pub_merged = nh_.advertise<sensor_msgs::PointCloud2>("merged_pc", 10, true);
+    pub_merged = nh_.advertise<sensor_msgs::PointCloud2>("merged_pc", 10, true);  
 }
 
 
 //Callbacks
 void OctomapMerge::callback_myMap(const octomap_msgs::OctomapConstPtr& msg)
 {
-    myMap = *msg;
+  ROS_INFO("my_map callback");
+  myMap = *msg;
 	myMapNew = true;
 } // end callback_myMap();
 
 void OctomapMerge::callback_neighborMaps(const octomap_merge::OctomapArrayConstPtr& msg){
-    neighbors = *msg;
+  ROS_INFO("neighbors callbck");
+  neighbors = *msg;
 	otherMapsNew = true;
 } // end callback_neighborMaps();
  
 void OctomapMerge::octomap_to_pcl(octomap_msgs::Octomap * map, sensor_msgs::PointCloud2Ptr occupiedCellsMsg)
 {
+    ROS_INFO("Octomap_to_pcl");
+	  ROS_INFO("Creating tree with same resolution");
     octomap::OcTree* myTree = new octomap::OcTree(map->resolution);
     myTree = (octomap::OcTree*)octomap_msgs::binaryMsgToMap(*map);
     double size, value;
@@ -68,7 +74,7 @@ void OctomapMerge::octomap_to_pcl(octomap_msgs::Octomap * map, sensor_msgs::Poin
 
     PointT point;
     PointCloud_xyz::Ptr occupiedCells(new PointCloud_xyz);
-
+    ROS_INFO("Iterating through tree");
     for(octomap::OcTree::leaf_iterator it = myTree->begin_leafs(), end=myTree->end_leafs(); it!=end; ++it)
     {
         depth = (int)it.getDepth();
@@ -106,31 +112,38 @@ void OctomapMerge::octomap_to_pcl(octomap_msgs::Octomap * map, sensor_msgs::Poin
             }  // endelseif
         } // endif
     } // endfor
+	  ROS_INFO("deleting tree structure");
     delete myTree;
     pcl::toROSMsg(*occupiedCells,*occupiedCellsMsg);
 } // endoctomap_to_pcl();
 
 void OctomapMerge::merge()
-{
+{  
+    ROS_INFO("Entered Merge Function");
+		ROS_INFO("Creating pointers");
     sensor_msgs::PointCloud2Ptr myMapMsg(new sensor_msgs::PointCloud2);
     sensor_msgs::PointCloud2Ptr mergedMapMsg(new sensor_msgs::PointCloud2);
     sensor_msgs::PointCloud2Ptr neighborMapMsg(new sensor_msgs::PointCloud2);
 
 
-	// Convert my map to PCL
-    *maptoconvert = myMap;
-    octomap_to_pcl(maptoconvert, myMapMsg);
+		// Convert my map to PCL
+    ROS_INFO("Converting my map");
+    *maptoconvertptr = myMap;
+    octomap_to_pcl(maptoconvertptr, myMapMsg);
     // Add map to merge
+    ROS_INFO("Adding Map to Merge");
     pcl::concatenatePointCloud(*mergedMapMsg, *myMapMsg, *mergedMapMsg);
     // For each map in the neighbor set
-    for(int i = 0; i++; i<neighbors.num_octomaps)
-	{
-		// Convert this map to PCL
-        *maptoconvert = neighbors.octomaps[i];
-        octomap_to_pcl(maptoconvert,neighborMapMsg);
-        // Add map to merge
-        pcl::concatenatePointCloud(*mergedMapMsg, *neighborMapMsg, *mergedMapMsg);
-	} // endfor
+    for(int i = 0; i<neighbors.num_octomaps; i++)
+		{
+			// Convert this map to PCL
+      ROS_INFO("Converting Neighbor Map");
+      *maptoconvertptr = neighbors.octomaps[i];
+      octomap_to_pcl(maptoconvertptr,neighborMapMsg);
+      // Add map to merge
+      ROS_INFO("Adding NeighborMap to Merge");
+      pcl::concatenatePointCloud(*mergedMapMsg, *neighborMapMsg, *mergedMapMsg);
+		} // endfor
     /* Filter merge cloud to avoid over publishing points */
     // pcl_conversions::toPCL(merged_out, *merged_cloud);
     // sor.setInputCloud(merged_cloud);
@@ -138,7 +151,9 @@ void OctomapMerge::merge()
     // sor.filter(*filtered_merged_cloud);
     // pcl_conversions::fromPCL(*filtered_merged_cloud, merged_pub);
     // merged_pub = merged_out;
-    pub_merged.publish(*mergedMapMsg);
+  for(int i = 0; i<pub_times; i++){
+		pub_merged.publish(*mergedMapMsg);
+  }
 } // end merge();
 
 int main(int argc, char **argv)

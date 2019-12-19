@@ -178,3 +178,6 @@ add_executable(octomap_merge src/octomap_merge.cpp)
 target_link_libraries(octomap_merge ${catkin_LIBRARIES})
 add_dependencies(octomap_merge octomap_merge_gencpp)
 
+add_executable(octomap_test src/octomap_test.cpp)
+target_link_libraries(octomap_test ${catkin_LIBRARIES})
+add_dependencies(octomap_test octomap_merge_gencpp)
